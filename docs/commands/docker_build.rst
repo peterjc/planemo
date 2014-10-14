@@ -32,12 +32,17 @@ image.::
 
       --dockerfile TEXT
       --docker_image_cache TEXT
-      --docker_cmd TEXT          Command used to launch docker (defaults to
-                                 docker).
-      --docker_sudo              Flag to use sudo when running docker.
-      --docker_sudo_cmd TEXT     sudo command to use when --docker_sudo is enabled
-                                 (defaults to sudo).
-      --docker_host TEXT         Docker host to target when executing docker
-                                 commands (defaults to localhost).
-      --help                     Show this message and exit.
+      --docker_build_no_cache         Do not use cache when building the image
+      --docker_build_rm [true|false]  Remove intermediate containers after a
+                                      successful build
+      --docker_build_force_rm         Always remote intermediate containers, even
+                                      for unsuccessful build
+      --docker_cmd TEXT               Command used to launch docker (defaults to
+                                      docker).
+      --docker_sudo                   Flag to use sudo when running docker.
+      --docker_sudo_cmd TEXT          sudo command to use when --docker_sudo is
+                                      enabled (defaults to sudo).
+      --docker_host TEXT              Docker host to target when executing docker
+                                      commands (defaults to localhost).
+      --help                          Show this message and exit.
     

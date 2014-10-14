@@ -19,7 +19,13 @@ def docker_host_args(**kwds):
     )
 
 
-def dockerfile_build(path, dockerfile=None, error=log.error, **kwds):
+def dockerfile_build(
+    path,
+    dockerfile=None,
+    error=log.error,
+    info=log.info,
+    **kwds
+):
     expected_container_names = set()
     tool_directories = set()
     for (tool_path, tool_xml) in loader_directory.load_tool_elements_from_path(path):
@@ -44,6 +50,7 @@ def dockerfile_build(path, dockerfile=None, error=log.error, **kwds):
         dockerfile,
         **docker_host_args(**kwds)
     )
+    info("Running command %s" % " ".join(docker_command_parts))
     commands.execute(docker_command_parts)
     docker_image_cache = kwds['docker_image_cache']
     if docker_image_cache:

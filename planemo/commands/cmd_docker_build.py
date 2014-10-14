@@ -1,7 +1,7 @@
 import click
 from planemo.cli import pass_context
 from planemo import options
-from planemo.io import error
+from planemo.io import error, info
 
 from galaxy.tools.deps import dockerfiles
 
@@ -10,6 +10,22 @@ from galaxy.tools.deps import dockerfiles
 @options.optional_tools_arg()
 @click.option('--dockerfile', default=None)
 @click.option('--docker_image_cache', default=None)
+@click.option(
+    '--docker_build_no_cache',
+    is_flag=True,
+    help="Do not use cache when building the image"
+)
+@click.option(
+    '--docker_build_rm',
+    type=click.Choice(["true", "false"]),
+    default="true",
+    help="Remove intermediate containers after a successful build"
+)
+@click.option(
+    '--docker_build_force_rm',
+    is_flag=True,
+    help="Always remote intermediate containers, even for unsuccessful build"
+)
 @options.docker_cmd_option()
 @options.docker_sudo_option()
 @options.docker_sudo_cmd_option()
@@ -31,9 +47,15 @@ def cli(ctx, path=".", dockerfile=None, **kwds):
         % planemo docker_build bowtie2.xml # asssumes Dockerfile in same dir
         % planemo docker_shell --from_tag bowtie2.xml
     """
+    for key, value in kwds.copy().iteritems():
+        if key.startswith("docker_build"):
+            new_key = key[len("docker_"):]
+            kwds[new_key] = value
+            del kwds[key]
     dockerfiles.dockerfile_build(
         path=path,
         dockerfile=dockerfile,
         error=error,
+        info=info,
         **kwds
     )

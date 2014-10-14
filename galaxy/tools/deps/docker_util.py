@@ -61,6 +61,12 @@ def build_command(
         docker_build_path = os.path.dirname(os.path.abspath(docker_build_path))
     build_command_parts = __docker_prefix(**kwds)
     build_command_parts.extend(["build", "-t", image, docker_build_path])
+    if kwds.get("build_force_rm", False):
+        build_command_parts.extend(["--force-rm", "true"])
+    if not kwds.get("build_rm", True):
+        build_command_parts.extend(["--rm", "false"])
+    if kwds.get("build_no_cache", False):
+        build_command_parts.extend(["--no-cache", "true"])
     return build_command_parts
 
 
