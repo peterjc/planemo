@@ -47,7 +47,9 @@ def cli(ctx, paths, **kwds):
     setting the values ``default_test_output`` and/or
     ``default_test_output_json`` in ``~/.planemo.yml`` to ``null``. For
     continuous integration testing a xUnit-style report can be confiured using
-    the ``--test_output_xunit``.
+    the ``--test_output_xunit``. A human readable plain text file using
+    reStructuredText markup is available via via ``--test_output_rst``
+    (e.g. ``tool_test_output.rst``).
 
     planemo uses temporarily generated config files and environment variables
     to attempt to shield this execution of Galaxy from manually launched runs

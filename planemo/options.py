@@ -561,6 +561,14 @@ def test_options():
             default=None,
         ),
         click.option(
+            "--test_output_rst",
+            type=click.Path(file_okay=True, resolve_path=True),
+            callback=get_default_callback("tool_test_output.rst"),
+            help=("Output test report (plain text with reStructuredText "
+                  "markup - for humans, e.g. tool_test_output.rst)."),
+            default=None,
+        ),
+        click.option(
             "--test_output_xunit",
             type=click.Path(file_okay=True, resolve_path=True),
             callback=get_default_callback(None),

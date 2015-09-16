@@ -35,6 +35,7 @@ def run_in_config(ctx, config, **kwds):
 
     xunit_supported, xunit_report_file = __xunit_state(kwds, config)
     structured_report_file = __structured_report_file(kwds, config)
+    rst_report_file = __rst_report_file(kwds, config)
 
     info("Testing using galaxy_root %s", config.galaxy_root)
     # TODO: Allow running dockerized Galaxy here instead.
@@ -85,6 +86,8 @@ def run_in_config(ctx, config, **kwds):
         open(test_results.output_html_path, "w").write(new_report)
     except Exception:
         pass
+
+    __write_rst(test_results, rst_report_file)
 
     __handle_summary(
         test_results,
@@ -173,6 +176,88 @@ def __print_command_line(structured_data, test_id):
 
     click.echo("| command: %s" % command)
 
+def _rst_header(text, char="="):
+    text = text.strip()
+    return("%s\n%s\n\n" % (text, char*len(text)))
+
+def _rst_literal_block(text):
+    return("```\n%s\n```\n" % text)
+
+def __write_rst(test_results, rst_report_file):
+    """Write human readable summary of test output as plain text RST."""
+
+    # Based on the full summary output to the terminal
+    num_tests = test_results.num_tests
+    num_problems = test_results.num_problems
+
+    with open(rst_report_file, "w") as output:
+        info("Writing RST to %s" % rst_report_file)
+        output.write(_rst_header("Galaxy Test Results"))
+        if num_tests == 0:
+            output.write(NO_TESTS_MESSAGE + "\n")
+        else:
+            if num_problems == 0:
+                output.write((ALL_TESTS_PASSED_MESSAGE % num_tests) + "\n")
+            else:
+                html_report_file = test_results.output_html_path
+                message_args = (num_problems, num_tests, html_report_file)
+                message = PROBLEM_COUNT_MESSAGE % message_args
+                output.write(message + "\n")
+
+            output.write("\nSummary:\n")
+            for testcase_el in test_results.xunit_testcase_elements:
+                structured_data_tests = test_results.structured_data_tests
+                test_id = test_structures.case_id(testcase_el)
+                passed = len(list(testcase_el)) == 0
+                if not passed:
+                    output.write(" - %s: **failed**\n" % test_id.label)
+                else:
+                    output.write(" - %s: passed\n" % test_id.label)
+            
+            if num_problems:
+                output.write("\n" + _rst_header("Failure Details"))
+
+                for testcase_el in test_results.xunit_testcase_elements:
+                    structured_data_tests = test_results.structured_data_tests
+                    test_id = test_structures.case_id(testcase_el)
+
+                    output.write(_rst_header(test_id.label, "-"))
+
+                    x = [d for d in structured_data_tests if d["id"] == test_id.id]
+                    assert len(x) == 1
+                    y = x[0]
+                    z = y["data"]
+                    info(repr(z))
+
+                    try:
+                        test = [d for d in structured_data_tests if d["id"] == test_id.id][0]["data"]
+                    except (KeyError, IndexError):
+                        output.write("Missing structured data for this test - old Galaxy?\n\n")
+                        continue
+                    
+                    execution_problem = test.get("execution_problem", None)
+                    if execution_problem:
+                        output.write("command: *could not execute job, no command generated*\n")
+
+                    for key in ("exit_code", "state"):
+                        try:
+                            output.write("%s: %s\n" % (key.replace("_", " "), test["job"][key]))
+                        except KeyError:
+                            output.write("%s: *unavailable*\n" % key.replace("_", " "))
+
+                    for key in ("command_line", "stdout", "stderr"):
+                        try:
+                            value = test["job"][key]
+                        except KeyError:
+                            output.write("%s: *unavailable*\n\n" % key.replace("_", " "))
+                        else:
+                            if "\n" in value:
+                                output.write("%s:\n\n%s\n" % (key.replace("_", " "), _rst_literal_block(value)))
+                            else:
+                                output.write("%s: ``%s``\n" % (key.replace("_", " "), value))
+
+        output.write("\n\nThe end.\n")
+
 
 def __xunit_state(kwds, config):
     xunit_supported = True
@@ -204,3 +289,11 @@ def __structured_report_file(kwds, config):
         structured_report_file = None
 
     return structured_report_file
+
+def __rst_report_file(kwds, config):
+    rst_report_file = None
+    rst_report_file = kwds.get("test_output_rst", None)
+    if rst_report_file is None:
+        conf_dir = config.config_directory
+        rst_report_file = os.path.join(conf_dir, "structured_data.json")
+    return rst_report_file
