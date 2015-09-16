@@ -235,16 +235,12 @@ def __write_rst_details(output, test_id, structured_data_tests):
     except (KeyError, IndexError):
         output.write("Missing structured data for this test - old Galaxy?\n\n")
         return
-            
-    execution_problem = test.get("execution_problem", None)
-    if execution_problem:
+
+    if test.get("execution_problem", None):
         output.write("command: *could not execute job, no command generated*\n")
 
     for key in ("exit_code", "state"):
-        try:
-            output.write("%s: %s\n" % (key.replace("_", " "), test["job"][key]))
-        except KeyError:
-            output.write("%s: *unavailable*\n" % key.replace("_", " "))
+        output.write("%s: %s\n" % (key.replace("_", " "), test["job"].get(key, "*unavailable*")))
 
     for key in ("command_line", "stdout", "stderr"):
         try:
@@ -258,6 +254,7 @@ def __write_rst_details(output, test_id, structured_data_tests):
                 output.write("%s:\n\n%s\n" % (key.replace("_", " "), _rst_literal_block(value)))
             else:
                 output.write("%s: ``%s``\n" % (key.replace("_", " "), value))
+    output.write("\n")
 
 
 def __xunit_state(kwds, config):
@@ -290,6 +287,7 @@ def __structured_report_file(kwds, config):
         structured_report_file = None
 
     return structured_report_file
+
 
 def __rst_report_file(kwds, config):
     rst_report_file = None
