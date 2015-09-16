@@ -176,12 +176,15 @@ def __print_command_line(structured_data, test_id):
 
     click.echo("| command: %s" % command)
 
+
 def _rst_header(text, char="="):
     text = text.strip()
     return("%s\n%s\n\n" % (text, char*len(text)))
 
+
 def _rst_literal_block(text):
     return("```\n%s\n```\n" % text)
+
 
 def __write_rst(test_results, rst_report_file):
     """Write human readable summary of test output as plain text RST."""
@@ -189,6 +192,7 @@ def __write_rst(test_results, rst_report_file):
     # Based on the full summary output to the terminal
     num_tests = test_results.num_tests
     num_problems = test_results.num_problems
+    structured_data_tests = test_results.structured_data_tests
 
     with open(rst_report_file, "w") as output:
         info("Writing RST to %s" % rst_report_file)
@@ -206,57 +210,54 @@ def __write_rst(test_results, rst_report_file):
 
             output.write("\nSummary:\n")
             for testcase_el in test_results.xunit_testcase_elements:
-                structured_data_tests = test_results.structured_data_tests
                 test_id = test_structures.case_id(testcase_el)
                 passed = len(list(testcase_el)) == 0
                 if not passed:
                     output.write(" - %s: **failed**\n" % test_id.label)
                 else:
                     output.write(" - %s: passed\n" % test_id.label)
-            
+
             if num_problems:
                 output.write("\n" + _rst_header("Failure Details"))
 
                 for testcase_el in test_results.xunit_testcase_elements:
-                    structured_data_tests = test_results.structured_data_tests
                     test_id = test_structures.case_id(testcase_el)
-
-                    output.write(_rst_header(test_id.label, "-"))
-
-                    x = [d for d in structured_data_tests if d["id"] == test_id.id]
-                    assert len(x) == 1
-                    y = x[0]
-                    z = y["data"]
-                    info(repr(z))
-
-                    try:
-                        test = [d for d in structured_data_tests if d["id"] == test_id.id][0]["data"]
-                    except (KeyError, IndexError):
-                        output.write("Missing structured data for this test - old Galaxy?\n\n")
-                        continue
-                    
-                    execution_problem = test.get("execution_problem", None)
-                    if execution_problem:
-                        output.write("command: *could not execute job, no command generated*\n")
-
-                    for key in ("exit_code", "state"):
-                        try:
-                            output.write("%s: %s\n" % (key.replace("_", " "), test["job"][key]))
-                        except KeyError:
-                            output.write("%s: *unavailable*\n" % key.replace("_", " "))
-
-                    for key in ("command_line", "stdout", "stderr"):
-                        try:
-                            value = test["job"][key]
-                        except KeyError:
-                            output.write("%s: *unavailable*\n\n" % key.replace("_", " "))
-                        else:
-                            if "\n" in value:
-                                output.write("%s:\n\n%s\n" % (key.replace("_", " "), _rst_literal_block(value)))
-                            else:
-                                output.write("%s: ``%s``\n" % (key.replace("_", " "), value))
+                    __write_rst_details(output, test_id, structured_data_tests)
 
         output.write("\n\nThe end.\n")
+
+
+def __write_rst_details(output, test_id, structured_data_tests):
+    output.write(_rst_header(test_id.label, "-"))
+
+    try:
+        test = [d for d in structured_data_tests if d["id"] == test_id.id][0]["data"]
+    except (KeyError, IndexError):
+        output.write("Missing structured data for this test - old Galaxy?\n\n")
+        return
+            
+    execution_problem = test.get("execution_problem", None)
+    if execution_problem:
+        output.write("command: *could not execute job, no command generated*\n")
+
+    for key in ("exit_code", "state"):
+        try:
+            output.write("%s: %s\n" % (key.replace("_", " "), test["job"][key]))
+        except KeyError:
+            output.write("%s: *unavailable*\n" % key.replace("_", " "))
+
+    for key in ("command_line", "stdout", "stderr"):
+        try:
+            value = test["job"][key]
+        except KeyError:
+            output.write("%s: *unavailable*\n\n" % key.replace("_", " "))
+        else:
+            if not value:
+                output.write("%s: *None*\n" % key.replace("_", " "))
+            elif "\n" in value:
+                output.write("%s:\n\n%s\n" % (key.replace("_", " "), _rst_literal_block(value)))
+            else:
+                output.write("%s: ``%s``\n" % (key.replace("_", " "), value))
 
 
 def __xunit_state(kwds, config):
