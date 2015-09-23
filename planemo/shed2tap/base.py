@@ -7,6 +7,9 @@ from six import string_types
 
 import os
 
+from tool_shed.galaxy_install.tool_dependencies.recipe.step_handler import Download
+from tool_shed.galaxy_install.tool_dependencies.recipe.step_handler import CompressedFile
+
 TOOLSHED_MAP = {
     "toolshed": "https://toolshed.g2.bx.psu.edu",
     "testtoolshed": "https://testtoolshed.g2.bx.psu.edu",
@@ -260,6 +263,29 @@ class Actions(object):
             platform = "os=%s,arch=%s," % (self.os, self.architecture)
         return "Actions[%s%s]" % (platform, map(str, self.actions))
 
+    def __call__(self, pwd=".", log_function=None):
+        """Execute the action in the specified working directory.
+
+        Returns a list of strings to add to env.sh if needed to access
+        any new/updated environment variables.
+
+        Raises an exception if an error occurs.
+        """
+        sysname, nodename, release, version, machine = os.uname()
+        if (self.architecture and self.architecture.lower() != machine.lower()) \
+                or (self.os and self.os.lower() != sysname.lower()):
+            # Mis-match, do nothing
+            if log_function:
+                log_function("Skipping platform specific action %r" % self)
+        else:
+            if log_function:
+                log_function("Running platform specific action %r" % self)
+            env_sh = []
+            for action in self.actions:
+                env_sh.extend(action(pwd))
+            return env_sh
+
+
     def to_bash(self):
         # Use self.os.title() to match "Linux" or "Darwin" in bash where case matters:
         if self.os and self.architecture:
@@ -337,6 +363,9 @@ class BaseAction(object):
         action_class = actions_by_type[type]
         return action_class(elem)
 
+    def __call__(self, pwd="."):
+        raise NotImplementedError("TODO - run %r" % self)
+
     def to_bash(self):
         """Return list of bash shell commands to execute this action.
 
@@ -345,6 +374,19 @@ class BaseAction(object):
         """
         return ['echo "TODO - Not implemented %r" && false' % self]
 
+def _download_and_extract(url, pwd=".", extract=True):   
+    # TODO - call tool shed method to do checksum etc:
+    # from tool_shed.galaxy_install.tool_dependencies.recipe import Download
+    os.chdir(pwd)
+    os.system("wget %s" % url)
+    if extract:
+        comp = CompressedFile(url)
+        # Extract in specified working directory
+        path = comp.extract(pwd)
+        assert os.path.isabs(path)
+        return path
+    else:
+        return pwd
 
 def _commands_to_download_and_extract(url):
     # Do we need to worry about target_filename here?
@@ -398,6 +440,10 @@ class DownloadByUrlAction(BaseAction):
         self.url = elem.text
         assert self.url
 
+    def __call__(self, pwd="."):
+        """Download, uncompress, and change directory to child folder."""
+        os.chdir(_download_and_extract(self.url, pwd, extract=True))
+
     def to_bash(self):
         # See class DownloadByUrl in Galaxy,
         # lib/tool_shed/galaxy_install/tool_dependencies/recipe/step_handler.py
@@ -412,6 +458,10 @@ class DownloadFileAction(BaseAction):
     def __init__(self, elem):
         self.url = elem.text
         self.extract = asbool(elem.attrib.get("extract", False))
+
+    def __call__(self, pwd="."):
+        """Download, uncompress, and change directory to child folder."""
+        os.chdir(_download_and_extract(self.url, pwd, extract=self.extract))
 
     def to_bash(self):
         if self.extract:
@@ -494,6 +544,10 @@ class SetEnvironmentAction(BaseAction):
             variables.append(var)
         self.variables = variables
         assert self.variables
+
+    def __call__(self, pwd="."):
+        # Don't actually need to do anything, just describe the env.sh lines:
+        return self.to_bash()
 
     def to_bash(self):
         answer = []

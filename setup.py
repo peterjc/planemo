@@ -66,6 +66,11 @@ setup(
         'planemo_ext.galaxy.tools.deps',
         'planemo_ext.galaxy.tools.deps.resolvers',
         'planemo_ext.galaxy.util',
+        'planemo_ext.tool_shed',
+        'planemo_ext.tool_shed.galaxy_install',
+        'planemo_ext.tool_shed.galaxy_install.tool_dependencies',
+        'planemo_ext.tool_shed.galaxy_install.tool_dependencies.recipe',
+        'planemo_ext.tool_shed.util',
     ],
     entry_points='''
         [console_scripts]

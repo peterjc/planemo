@@ -8,6 +8,10 @@ from planemo.io import info, error
 from planemo.cli import pass_context
 from planemo import options
 
+import galaxy
+print(galaxy.__file__)
+#from tool_shed.galaxy_install.tool_dependencies import recipe
+
 from galaxy.tools.loader_directory import load_tool_elements_from_path
 
 from galaxy.tools.deps.requirements import parse_requirements_from_xml
@@ -64,6 +68,9 @@ def run_tool_dep(dependencies_file, env_file_handle):
     for action in package.all_actions:
         for statement in action.to_bash():
             info(statement)
+        # This will actually run the action:
+        for env_sh_line in action():
+            env_file_handle.write(env_sh_line)
     info('Done')
 
 
